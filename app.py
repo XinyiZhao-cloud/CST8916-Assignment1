@@ -1,8 +1,11 @@
+# AI Disclosure: ChatGPT was used to assist with implementing the 
+# tasks CRUD endpoints and validation logic.
 # Import necessary modules from Flask
 # Flask: the core framework for the web app
 # jsonify: to convert Python dictionaries to JSON responses
 # request: to access incoming request data (e.g., POST data)
 # abort: to handle errors and send error status codes
+
 from flask import Flask, jsonify, request, abort
 from flask_cors import CORS  # Enable Cross-Origin Resource Sharing for client apps
 
@@ -20,6 +23,15 @@ users = [
     {"id": 1, "name": "Alice", "age": 25},
     {"id": 2, "name": "Bob", "age": 30},
 ]
+# In-memory "database" of tasks
+tasks = [
+    {"id": 1, "title": "Learn REST", "description": "Study REST principles", "user_id": 1, "completed": True},
+    {"id": 2, "title": "Build API", "description": "Complete the assignment", "user_id": 2, "completed": False},
+]
+
+# Helper function to check if a user exists by their ID
+def user_exists(user_id: int) -> bool:
+    return any(u["id"] == user_id for u in users)
 
 # Define route to handle requests to the root URL ('/')
 @app.route('/')
@@ -97,6 +109,111 @@ def delete_user(user_id):
     # Rebuild the users list, excluding the user with the specified ID
     users = [user for user in users if user['id'] != user_id]
     return '', 204  # 204 is the HTTP status code for 'No Content', indicating the deletion was successful
+
+# Route to retrieve all tasks (GET request)
+@app.route('/tasks', methods=['GET'])
+def get_tasks():
+    return jsonify(tasks), 200
+
+# Route to retrieve a single task by its ID (GET request)
+@app.route('/tasks/<int:task_id>', methods=['GET'])
+def get_task(task_id):
+    task = next((t for t in tasks if t['id'] == task_id), None)
+    if task is None:
+        abort(404)
+    return jsonify(task), 200
+
+@app.route('/tasks', methods=['POST'])
+def create_task():
+    # Invalid or missing JSON
+    if not request.is_json:
+        abort(400)
+
+    data = request.get_json(silent=True)
+    if data is None:
+        abort(400)
+
+    # Required fields
+    title = data.get('title')
+    user_id = data.get('user_id')
+
+    if not title or user_id is None:
+        abort(400)
+
+    # Validate user_id references an existing user
+    if not isinstance(user_id, int) or not user_exists(user_id):
+        abort(400)
+
+    new_task = {
+        "id": tasks[-1]["id"] + 1 if tasks else 1,
+        "title": title,
+        "description": data.get("description", ""),
+        "user_id": user_id,
+        "completed": data.get("completed", False)
+    }
+
+    # Ensure completed is boolean if provided
+    if "completed" in data and not isinstance(data["completed"], bool):
+        abort(400)
+
+    tasks.append(new_task)
+    return jsonify(new_task), 201
+
+@app.route('/tasks/<int:task_id>', methods=['PUT'])
+def update_task(task_id):
+    task = next((t for t in tasks if t['id'] == task_id), None)
+    if task is None:
+        abort(404)
+
+    if not request.is_json:
+        abort(400)
+
+    data = request.get_json(silent=True)
+    if data is None:
+        abort(400)
+
+    # If user_id is provided, it must be valid
+    if "user_id" in data:
+        user_id = data.get("user_id")
+        if not isinstance(user_id, int) or not user_exists(user_id):
+            abort(400)
+        task["user_id"] = user_id
+
+    # Update fields if provided
+    if "title" in data:
+        if not data["title"]:
+            abort(400)
+        task["title"] = data["title"]
+
+    if "description" in data:
+        task["description"] = data.get("description", "")
+
+    if "completed" in data:
+        if not isinstance(data["completed"], bool):
+            abort(400)
+        task["completed"] = data["completed"]
+
+    return jsonify(task), 200
+
+@app.route('/tasks/<int:task_id>', methods=['DELETE'])
+def delete_task(task_id):
+    global tasks
+    task = next((t for t in tasks if t['id'] == task_id), None)
+    if task is None:
+        abort(404)
+
+    tasks = [t for t in tasks if t['id'] != task_id]
+    return '', 204
+@app.route('/users/<int:user_id>/tasks', methods=['GET'])
+def get_tasks_for_user(user_id):
+    user = next((u for u in users if u['id'] == user_id), None)
+    if user is None:
+        abort(404)
+
+    user_tasks = [t for t in tasks if t["user_id"] == user_id]
+    return jsonify(user_tasks), 200
+
+
 
 # Entry point for running the Flask app
 # The app will run on host 0.0.0.0 (accessible on all network interfaces) and port 8000.

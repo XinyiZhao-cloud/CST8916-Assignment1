@@ -1,0 +1,57 @@
+@baseUrl = http://127.0.0.1:8000
+
+# 1 GET all tasks 
+GET {{baseUrl}}/tasks
+
+# 2 GET a single task 
+GET {{baseUrl}}/tasks/1
+
+# 3 GET a task that doesn't exist 
+GET {{baseUrl}}/tasks/9999
+
+# 4 POST a new task (valid data) 
+POST {{baseUrl}}/tasks
+Content-Type: application/json
+
+{
+  "title": "Complete Assignment 1",
+  "description": "Extend the REST API with tasks",
+  "user_id": 1,
+  "completed": false
+}
+
+# 5 POST a task with missing title 
+POST {{baseUrl}}/tasks
+Content-Type: application/json
+
+{
+  "description": "Missing title field",
+  "user_id": 1,
+  "completed": false
+}
+
+# 6 POST a task with invalid user_id 
+POST {{baseUrl}}/tasks
+Content-Type: application/json
+
+{
+  "title": "Invalid user test",
+  "description": "user_id does not exist",
+  "user_id": 9999,
+  "completed": false
+}
+
+# 7 PUT to update a task 
+PUT {{baseUrl}}/tasks/2
+Content-Type: application/json
+
+{
+  "title": "Build API (updated)",
+  "completed": true
+}
+
+# 8 DELETE a task 
+DELETE {{baseUrl}}/tasks/3
+
+# 9 GET tasks for a specific user (expect 200)
+GET {{baseUrl}}/users/1/tasks
